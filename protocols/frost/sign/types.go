@@ -36,7 +36,7 @@ type Signature struct {
 	// R is the commitment point.
 	R curve.Point
 	// z is the response scalar.
-	z curve.Scalar
+	Z curve.Scalar
 }
 
 // Verify checks if a signature equation actually holds.
@@ -52,7 +52,7 @@ func (sig Signature) Verify(public curve.Point, m []byte) bool {
 	expected := challenge.Act(public)
 	expected = expected.Add(sig.R)
 
-	actual := sig.z.ActOnBase()
+	actual := sig.Z.ActOnBase()
 
 	return expected.Equal(actual)
 }

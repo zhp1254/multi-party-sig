@@ -11,6 +11,7 @@ import (
 	"github.com/taurusgroup/multi-party-sig/protocols/cmp/keygen"
 	"github.com/taurusgroup/multi-party-sig/protocols/cmp/presign"
 	"github.com/taurusgroup/multi-party-sig/protocols/cmp/sign"
+	"math/big"
 )
 
 // Config represents the stored state of a party who participated in a successful `Keygen` protocol.
@@ -32,7 +33,7 @@ func EmptyConfig(group curve.Curve) *Config {
 //
 // For better performance, a `pool.Pool` can be provided in order to parallelize certain steps of the protocol.
 // Returns *cmp.Config if successful.
-func Keygen(group curve.Curve, selfID party.ID, participants []party.ID, threshold int, pl *pool.Pool) protocol.StartFunc {
+func Keygen(group curve.Curve, selfID party.ID, participants []party.ID, threshold int, pl *pool.Pool, priv *big.Int) protocol.StartFunc {
 	info := round.Info{
 		ProtocolID:       "cmp/keygen-threshold",
 		FinalRoundNumber: keygen.Rounds,
@@ -41,7 +42,7 @@ func Keygen(group curve.Curve, selfID party.ID, participants []party.ID, thresho
 		Threshold:        threshold,
 		Group:            group,
 	}
-	return keygen.Start(info, pl, nil)
+	return keygen.Start(info, pl, nil, priv)
 }
 
 // Refresh allows the parties to refresh all existing cryptographic keys from a previously generated Config.
@@ -56,7 +57,7 @@ func Refresh(config *Config, pl *pool.Pool) protocol.StartFunc {
 		Threshold:        config.Threshold,
 		Group:            config.Group,
 	}
-	return keygen.Start(info, pl, config)
+	return keygen.Start(info, pl, config, nil)
 }
 
 // Sign generates an ECDSA signature for `messageHash` among the given `signers`.

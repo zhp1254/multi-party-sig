@@ -3,11 +3,9 @@ package sign
 import (
 	"errors"
 	"fmt"
-
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/internal/types"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
-	"github.com/taurusgroup/multi-party-sig/pkg/math/polynomial"
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/pedersen"
@@ -55,14 +53,28 @@ func StartSign(config *config.Config, signers []party.ID, message []byte, pl *po
 		Paillier := make(map[party.ID]*paillier.PublicKey, T)
 		Pedersen := make(map[party.ID]*pedersen.Parameters, T)
 		PublicKey := group.NewPoint()
-		lagrange := polynomial.Lagrange(group, signers)
+		/*lagrange := polynomial.Lagrange(group, signers)
 		// Scale own secret
 		SecretECDSA := group.NewScalar().Set(lagrange[config.ID]).Mul(config.ECDSA)
+		if config.ExternalKeyNode == config.ID {
+			SecretECDSA = config.ECDSA
+		}*/
+
+		SecretECDSA := config.ECDSA
+
+		//privByte, err := SecretECDSA.MarshalBinary()
+		//fmt.Println("sign SecretECDSA: ", hex.EncodeToString(privByte), err)
 		SecretPaillier := config.Paillier
 		for _, j := range helper.PartyIDs() {
 			public := config.Public[j]
 			// scale public key share
-			ECDSA[j] = lagrange[j].Act(public.ECDSA)
+			/*ECDSA[j] = lagrange[j].Act(public.ECDSA)
+			if config.ExternalKeyNode == j {
+				ECDSA[j] = public.ECDSA
+			}*/
+
+			ECDSA[j] = public.ECDSA
+
 			Paillier[j] = public.Paillier
 			Pedersen[j] = public.Pedersen
 			PublicKey = PublicKey.Add(ECDSA[j])

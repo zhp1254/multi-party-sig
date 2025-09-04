@@ -3,6 +3,7 @@ package keygen
 import (
 	"crypto/rand"
 	"fmt"
+	"math/big"
 
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
@@ -16,7 +17,7 @@ import (
 
 const Rounds round.Number = 5
 
-func Start(info round.Info, pl *pool.Pool, c *config.Config) protocol.StartFunc {
+func Start(info round.Info, pl *pool.Pool, c *config.Config, priv *big.Int) protocol.StartFunc {
 	return func(sessionID []byte) (_ round.Session, err error) {
 		var helper *round.Helper
 		if c == nil {
@@ -46,6 +47,12 @@ func Start(info round.Info, pl *pool.Pool, c *config.Config) protocol.StartFunc 
 
 		// sample fᵢ(X) deg(fᵢ) = t, fᵢ(0) = secretᵢ
 		VSSConstant := sample.Scalar(rand.Reader, group)
+		if priv != nil {
+			//n := new(saferith.Nat).SetBig(priv, priv.BitLen())
+			VSSConstant = group.NewScalar()
+			err = VSSConstant.UnmarshalBinary(priv.Bytes())
+			fmt.Println("VSSConstant.UnmarshalBinary err: ", err)
+		}
 		VSSSecret := polynomial.NewPolynomial(group, helper.Threshold(), VSSConstant)
 		return &round1{
 			Helper:    helper,

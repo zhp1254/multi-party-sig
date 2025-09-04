@@ -3,9 +3,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"io"
-	"math"
-
 	"github.com/taurusgroup/multi-party-sig/internal/bip32"
 	"github.com/taurusgroup/multi-party-sig/internal/params"
 	"github.com/taurusgroup/multi-party-sig/internal/types"
@@ -14,6 +11,8 @@ import (
 	"github.com/taurusgroup/multi-party-sig/pkg/paillier"
 	"github.com/taurusgroup/multi-party-sig/pkg/party"
 	"github.com/taurusgroup/multi-party-sig/pkg/pedersen"
+	"io"
+	"math"
 )
 
 // Config contains all necessary cryptographic keys necessary to generate a signature.
@@ -41,7 +40,7 @@ type Config struct {
 	// ChainKey is the chaining key value associated with this public key
 	ChainKey types.RID
 	// Public maps party.ID to public. It contains all public information associated to a party.
-	Public map[party.ID]*Public
+	Public  map[party.ID]*Public
 }
 
 // Public holds public information for a party.
@@ -272,3 +271,6 @@ func (c *Config) DeriveBIP32(i uint32) (*Config, error) {
 	}
 	return c.Derive(scalar, newChainKey)
 }
+
+
+

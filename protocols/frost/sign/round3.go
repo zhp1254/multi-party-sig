@@ -114,7 +114,7 @@ func (r *round3) Finalize(chan<- *round.Message) (round.Session, error) {
 	} else {
 		sig := Signature{
 			R: r.R,
-			z: z,
+			Z: z,
 		}
 
 		if !sig.Verify(r.Y, r.M) {

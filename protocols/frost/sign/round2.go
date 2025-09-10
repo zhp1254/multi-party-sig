@@ -113,7 +113,10 @@ func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 		RShares[l] = RShares[l].Add(r.D[l])
 		R = R.Add(RShares[l])
 	}
-	var c curve.Scalar
+
+	// Lambdas[i] = λᵢ
+	Lambdas := polynomial.Lagrange(r.Group(), r.PartyIDs())
+	var c, z_i curve.Scalar
 	if r.taproot {
 		// BIP-340 adjustment: We need R to have an even y coordinate. This means
 		// conditionally negating k = ∑ᵢ (dᵢ + (eᵢ ρᵢ)), which we can accomplish
@@ -134,28 +137,34 @@ func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 		PBytes := r.Y.(*curve.Secp256k1Point).XBytes()
 		cHash := taproot.TaggedHash("BIP0340/challenge", RBytes, PBytes, r.M)
 		c = r.Group().NewScalar().SetNat(new(saferith.Nat).SetBytes(cHash))
-	} else {
-		cHash := hash.New()
-		_ = cHash.WriteAny(R, r.Y, r.M)
-		c = sample.Scalar(cHash.Digest(), r.Group())
-	}
 
-	// Lambdas[i] = λᵢ
-	Lambdas := polynomial.Lagrange(r.Group(), r.PartyIDs())
-	// 5. "Each Pᵢ computes their response using their long-lived secret share sᵢ
-	// by computing zᵢ = dᵢ + (eᵢ ρᵢ) + λᵢ sᵢ c, using S to determine
-	// the ith lagrange coefficient λᵢ"
-	z_i := r.Group().NewScalar().Set(Lambdas[r.SelfID()]).Mul(r.s_i).Mul(c)
-	z_i.Add(r.d_i)
-	ed := r.Group().NewScalar().Set(rho[r.SelfID()]).Mul(r.e_i)
-	z_i.Add(ed)
+		// 5. "Each Pᵢ computes their response using their long-lived secret share sᵢ
+		// by computing zᵢ = dᵢ + (eᵢ ρᵢ) + λᵢ sᵢ c, using S to determine
+		// the ith lagrange coefficient λᵢ"
+		//z_i = r.Group().NewScalar().Set(Lambdas[r.SelfID()]).Mul(r.s_i).Mul(c)
+		z_i = r.Group().NewScalar().Set(r.s_i).Mul(c)
+		z_i.Add(r.d_i)
+		ed := r.Group().NewScalar().Set(rho[r.SelfID()]).Mul(r.e_i)
+		z_i.Add(ed)
+		ed = nil
+	} else {
+		c = getHash(R, r.Y, r.M[:])
+		// l * share
+		//priv := r.Group().NewScalar().Set(Lambdas[r.SelfID()]).Mul(r.s_i)
+		priv := r.s_i
+		// dᵢ + (eᵢ ρᵢ)
+		nonce := r.Group().NewScalar().Set(rho[r.SelfID()]).Mul(r.e_i).Add(r.d_i)
+		z_i = edwardsPartySign(priv, nonce, c)
+	}
 
 	// 6. "Each Pᵢ securely deletes ((dᵢ, Dᵢ), (eᵢ, Eᵢ)) from their local storage,
 	// and returns zᵢ to SA."
 	//
 	// Since we don't have a signing authority, we instead broadcast zᵢ.
 
-	// TODO: Securely delete the nonces.
+	r.d_i = nil
+	r.e_i = nil
+	r.s_i = nil
 
 	// Broadcast our response
 	err := r.BroadcastMessage(out, &broadcast3{Z_i: z_i})

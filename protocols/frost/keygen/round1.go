@@ -108,6 +108,7 @@ func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 
 	// This method conveniently calculates all of that for us
 	// Phi_i = Φᵢ
+	// 多项式 ：[a*G,b*G,c *G]
 	Phi_i := polynomial.NewPolynomialExponent(f_i)
 
 	// c_i is our contribution to the chaining key

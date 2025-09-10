@@ -2,6 +2,9 @@ package sign
 
 import (
 	"fmt"
+	"github.com/agl/ed25519/edwards25519"
+	"github.com/decred/dcrd/dcrec/edwards"
+	"math/big"
 
 	"github.com/taurusgroup/multi-party-sig/internal/round"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
@@ -65,12 +68,19 @@ func (r *round3) StoreBroadcastMessage(msg round.Message) error {
 	// Note that step 7.a is an artifact of having a signing authority. In our case,
 	// we've already computed everything that step computes.
 
-	expected := r.c.Act(r.Lambda[from].Act(r.YShares[from])).Add(r.RShares[from])
-
-	actual := body.Z_i.ActOnBase()
-
-	if !actual.Equal(expected) {
-		return fmt.Errorf("failed to verify response from %v", from)
+	if r.taproot {
+		//expected := r.c.Act(r.Lambda[from].Act(r.YShares[from])).Add(r.RShares[from])
+		expected := r.c.Act(r.YShares[from]).Add(r.RShares[from])
+		actual := body.Z_i.ActOnBase()
+		if !actual.Equal(expected) {
+			return fmt.Errorf("failed to verify response from %v", from)
+		}
+	} else {
+		//pubKey := r.Lambda[from].Act(r.YShares[from])
+		pubKey := r.YShares[from]
+		if !edwardsPartySignVerify(r.RShares[from], pubKey, r.c, body.Z_i) {
+			return fmt.Errorf("failed to verify response from %v", from)
+		}
 	}
 
 	r.z[from] = body.Z_i
@@ -90,12 +100,11 @@ func (r *round3) Finalize(chan<- *round.Message) (round.Session, error) {
 
 	// 7.c "Compute the group's response z = ∑ᵢ zᵢ"
 	z := r.Group().NewScalar()
-	for _, z_l := range r.z {
-		z.Add(z_l)
-	}
-
 	// The format of our signature depends on using taproot, naturally
 	if r.taproot {
+		for _, z_l := range r.z {
+			z.Add(z_l)
+		}
 		sig := taproot.Signature(make([]byte, 0, taproot.SignatureLen))
 		sig = append(sig, r.R.(*curve.Secp256k1Point).XBytes()...)
 		zBytes, err := z.MarshalBinary()
@@ -112,6 +121,16 @@ func (r *round3) Finalize(chan<- *round.Message) (round.Session, error) {
 
 		return r.ResultRound(sig), nil
 	} else {
+		sumS := edwards.BigIntToEncodedBytes(big.NewInt(0))
+		for _, z_l := range r.z {
+			sj, _ := z_l.MarshalBinary()
+			sjBytes := edwards.BigIntToEncodedBytes(new(big.Int).SetBytes(sj))
+			// a*b+c
+			var tmpSumS [32]byte
+			edwards25519.ScMulAdd(&tmpSumS, sumS, edwards.BigIntToEncodedBytes(big.NewInt(1)), sjBytes)
+			sumS = &tmpSumS
+		}
+		_ = z.UnmarshalBinary(edwards.EncodedBytesToBigInt(sumS).Bytes())
 		sig := Signature{
 			R: r.R,
 			Z: z,

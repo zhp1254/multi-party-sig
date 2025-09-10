@@ -2,7 +2,6 @@ package polynomial
 
 import (
 	"crypto/rand"
-
 	"github.com/taurusgroup/multi-party-sig/pkg/math/curve"
 	"github.com/taurusgroup/multi-party-sig/pkg/math/sample"
 )
@@ -34,6 +33,18 @@ func NewPolynomial(group curve.Curve, degree int, constant curve.Scalar) *Polyno
 	return polynomial
 }
 
+func NewPolynomialV2(group curve.Curve, constant ...curve.Scalar) *Polynomial {
+	polynomial := &Polynomial{
+		group:        group,
+		coefficients: make([]curve.Scalar, 0),
+	}
+
+	for _, v := range constant {
+		polynomial.coefficients = append(polynomial.coefficients, v)
+	}
+	return polynomial
+}
+
 // Evaluate evaluates a polynomial in a given variable index
 // We use Horner's method: https://en.wikipedia.org/wiki/Horner%27s_method
 func (p *Polynomial) Evaluate(index curve.Scalar) curve.Scalar {
@@ -45,6 +56,9 @@ func (p *Polynomial) Evaluate(index curve.Scalar) curve.Scalar {
 	// reverse order
 	for i := len(p.coefficients) - 1; i >= 0; i-- {
 		// bₙ₋₁ = bₙ * x + aₙ₋₁
+		// ((0*x+c) * x + b) * x + a
+		// (cx + b) *x +a
+		// cx^2 + bx + a
 		result.Mul(index).Add(p.coefficients[i])
 	}
 	return result

@@ -12,8 +12,11 @@ require (
 	golang.org/x/sync v0.3.0
 )
 
+require github.com/agl/ed25519 v0.0.0-20170116200512-5312a6153412 // indirect
+
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/decred/dcrd/dcrec/edwards v1.0.0
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect

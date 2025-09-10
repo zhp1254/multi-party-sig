@@ -2,6 +2,7 @@ package zksch
 
 import (
 	"crypto/rand"
+	"fmt"
 	"io"
 
 	"github.com/taurusgroup/multi-party-sig/pkg/hash"
@@ -75,6 +76,7 @@ func (r *Randomness) Prove(hash *hash.Hash, public curve.Point, secret curve.Sca
 	if err != nil {
 		return nil
 	}
+	fmt.Println()
 	es := e.Mul(secret)
 	z := es.Add(r.a)
 	return &Response{group: group, Z: z}
@@ -102,7 +104,6 @@ func (z *Response) Verify(hash *hash.Hash, public curve.Point, commitment *Commi
 	lhs := z.Z.Act(gen)
 	rhs := e.Act(public)
 	rhs = rhs.Add(commitment.C)
-
 	return lhs.Equal(rhs)
 }
 

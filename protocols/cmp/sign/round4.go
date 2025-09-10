@@ -116,6 +116,13 @@ func (r *round4) Finalize(out chan<- *round.Message) (round.Session, error) {
 	// σᵢ = rχᵢ + kᵢm
 	SigmaShare := r.Group().NewScalar().Set(R).Mul(r.ChiShare).Add(km)
 
+	r.SecretECDSA = nil
+	km = nil
+	r.ChiShare = nil
+	r.KShare = nil
+	r.KNonce = nil
+	r.Paillier = nil
+
 	// Send to all
 	err := r.BroadcastMessage(out, &broadcast5{SigmaShare: SigmaShare})
 	if err != nil {

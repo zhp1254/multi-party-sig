@@ -18,10 +18,12 @@ type round2 struct {
 	*round1
 	// f_i is the polynomial this participant uses to share their contribution to
 	// the secret
+	//节点的多项式a,b,c
 	f_i *polynomial.Polynomial
 	// Phi contains the polynomial commitment for each participant, ourselves included.
 	//
 	// Phi[l][k] corresponds to ϕₗₖ in the Frost paper.
+	// 每个节点的多项式[a*G,b*G,c *G]
 	Phi map[party.ID]*polynomial.Exponent
 	// ChainKeyDecommitment will be used to decommit our contribution to the chain key
 	ChainKeyDecommitment hash.Decommitment
@@ -37,6 +39,7 @@ type round2 struct {
 type broadcast2 struct {
 	round.ReliableBroadcastContent
 	// Phi_i is the commitment to the polynomial that this participant generated.
+	// 多项式 [a*G，b*G,c *G]
 	Phi_i *polynomial.Exponent
 	// Sigma_i is the Schnorr proof of knowledge of the participant's secret
 	Sigma_i *sch.Proof
@@ -83,6 +86,7 @@ func (r *round2) StoreBroadcastMessage(msg round.Message) error {
 		}
 	} else {
 		if !body.Sigma_i.Verify(r.Helper.HashForID(from), body.Phi_i.Constant(), nil) {
+			//fmt.Println(body.Sigma_i)
 			return fmt.Errorf("failed to verify Schnorr proof for party %s", from)
 		}
 	}

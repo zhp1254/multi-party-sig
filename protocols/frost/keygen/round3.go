@@ -24,6 +24,7 @@ type round3 struct {
 
 type message3 struct {
 	// F_li is the secret share sent from party l to this party.
+	// a+bx+cx^2
 	F_li curve.Scalar
 }
 
@@ -84,12 +85,16 @@ func (r *round3) StoreMessage(msg round.Message) error {
 	//   fₗ(i) * G =? ∑ₖ₌₀ᵗ (iᵏ mod q) * ϕₗₖ
 	//
 	// aborting if the check fails."
+	// (a+bx+cx^2) * G, x为当前节点id， abc 为from的多项式
 	expected := body.F_li.ActOnBase()
+
 	actual := r.Phi[from].Evaluate(r.SelfID().Scalar(r.Group()))
 	if !expected.Equal(actual) {
+		fmt.Println("vss fail:", r.SelfID(), " from:", from)
 		return fmt.Errorf("VSS failed to validate")
 	}
 
+	fmt.Println("vss success:", r.SelfID(), from)
 	r.shareFrom[from] = body.F_li
 
 	return nil

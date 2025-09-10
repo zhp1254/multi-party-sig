@@ -3,6 +3,10 @@ package sign
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"github.com/decred/dcrd/dcrec/edwards"
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,6 +24,7 @@ import (
 
 func checkOutput(t *testing.T, rounds []round.Session, public curve.Point, m []byte) {
 	for _, r := range rounds {
+		//fmt.Println(r.(*round.Abort).Err)
 		require.IsType(t, &round.Output{}, r, "expected result round")
 		resultRound := r.(*round.Output)
 		require.IsType(t, Signature{}, resultRound.Result, "expected signature result")
@@ -29,9 +34,9 @@ func checkOutput(t *testing.T, rounds []round.Session, public curve.Point, m []b
 }
 
 func TestSign(t *testing.T) {
-	group := curve.Secp256k1{}
+	group := curve.TwistedEdwardsCurve{}
 
-	N := 5
+	N := 3
 	threshold := 2
 
 	partyIDs := test.PartyIDs(N)
@@ -64,7 +69,7 @@ func TestSign(t *testing.T) {
 			VerificationShares: party.NewPointMap(verificationShares),
 			ChainKey:           chainKey,
 		}
-		result, _ = result.DeriveChild(1)
+		//result, _ = result.DeriveChild(1)
 		if newPublicKey == nil {
 			newPublicKey = result.PublicKey
 		}
@@ -165,4 +170,43 @@ func TestSignTaproot(t *testing.T) {
 	}
 
 	checkOutputTaproot(t, rounds, newPublicKey, steak)
+}
+
+func TestSignCheck(t *testing.T)  {
+	d1, _ := hex.DecodeString("03eb4cef171d2a709dcc7dca78889f8216fca0b7b5a170e3a6588b7553ade9bd")
+	d2, _ := hex.DecodeString("02668f129985a7f2c0f79fbd2c67d86c603724555ac627f06babed1432683ff5")
+	d3, _ := hex.DecodeString("0b1e68c9c3fe5d3a80847f61f58234f6d17711e92c23530d3d562fd832c677f4")
+
+	k1, _ := hex.DecodeString("0c84a56548c97387c80827a4910397cb42da6d66285f44bb0ce065386d2fb4df")
+	k2, _ := hex.DecodeString("0becd683c56db356a59cb1ecb1a3a03c7178a386ea85c45f3707d0be852afd1d")
+	k3, _ := hex.DecodeString("0622984d4a8e68396bdac32a8ff685a583c5821ae1baefcd6ac67259db697e79")
+
+	pub := "01454bb4b99fbe9bc8cf502d36323f35001d58a7a40aae2720d4020e270b27ca"
+	R := "1be801b24cadc2a802bc9ecca47c56b7615e65ac6cf8fd25ffd4ebec3f44a478"
+
+	priv1 := new(big.Int).SetBytes(d1)
+	priv2 := new(big.Int).SetBytes(d2)
+	priv3 := new(big.Int).SetBytes(d3)
+
+	priv := new(big.Int).Add(priv1, priv2)
+	priv.Add(priv, priv3)
+
+	c := curve.EdwardsInstance()
+	priv.Mod(priv, c.N)
+	px, py := c.ScalarBaseMult(priv.Bytes())
+	fmt.Println(hex.EncodeToString(edwards.BigIntPointToEncodedBytes(px, py)[:]))
+	fmt.Println(pub)
+
+
+	bk1 := new(big.Int).SetBytes(k1)
+	bk2 := new(big.Int).SetBytes(k2)
+	bk3 := new(big.Int).SetBytes(k3)
+
+	k := new(big.Int).Add(bk1, bk2)
+	k.Add(k, bk3)
+
+	priv.Mod(k, c.N)
+	kx, ky := c.ScalarBaseMult(k.Bytes())
+	fmt.Println(hex.EncodeToString(edwards.BigIntPointToEncodedBytes(kx, ky)[:]))
+	fmt.Println(R)
 }

@@ -94,7 +94,7 @@ func (r *round3) StoreMessage(msg round.Message) error {
 		return fmt.Errorf("VSS failed to validate")
 	}
 
-	fmt.Println("vss success:", r.SelfID(), from)
+	//fmt.Println("vss success:", r.SelfID(), from)
 	r.shareFrom[from] = body.F_li
 
 	return nil

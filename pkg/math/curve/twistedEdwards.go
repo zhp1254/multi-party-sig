@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/agl/ed25519/edwards25519"
 	"github.com/cronokirby/saferith"
 	"github.com/decred/dcrd/dcrec/edwards"
 	"math/big"
@@ -250,9 +251,27 @@ func (p *TwistedEdwardsPoint) Set(that Point) Point {
 	return p
 }
 
+//Negate https://blog.csdn.net/mutourend/article/details/98742544
 func (p *TwistedEdwardsPoint) Negate() Point {
+	a := edwards.BigIntPointToEncodedBytes(p.X, p.Y)
+	aEGE := new(edwards25519.ExtendedGroupElement)
+	aEGE.FromBytes(a)
+
+	var negX edwards25519.FieldElement
+	var negT edwards25519.FieldElement
+	edwards25519.FeNeg(&negX, &aEGE.X)
+	edwards25519.FeNeg(&negT, &aEGE.T)
+
+	bEGE := new(edwards25519.ExtendedGroupElement)
+	bEGE.T = negT
+	bEGE.X = negX
+	edwards25519.FeCopy(&bEGE.Y, &aEGE.Y)
+	edwards25519.FeCopy(&bEGE.Z, &aEGE.Z)
+
+	var newPoint [32]byte
+	bEGE.ToBytes(&newPoint)
 	var out TwistedEdwardsPoint
-	out.X, out.Y = edwardsCurve.ScalarMult(p.X, p.Y, new(big.Int).SetInt64(-1).Bytes())
+	_ = out.UnmarshalBinary(newPoint[:])
 	return &out
 }
 

@@ -144,7 +144,10 @@ func edwardsPartySignVerify(R, P curve.Point, challenge, signature curve.Scalar)
 	edwards25519.FeNeg(&A.X, &A.X)
 	edwards25519.FeNeg(&A.T, &A.T)
 
-
+	// s_i = k_i + h*d_i
+	// s_i *G = k_i * G = h*d_i * G
+	// s_i *G - h*d_i * G = k_i * G
+	// s_i * G - h * P_i = R_i
 	var newR edwards25519.ProjectiveGroupElement
 	edwards25519.GeDoubleScalarMultVartime(&newR, &CByte, &A, SByte)
 

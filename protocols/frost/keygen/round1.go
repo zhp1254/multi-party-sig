@@ -15,7 +15,8 @@ import (
 )
 
 // This round corresponds with the steps 1-4 of Round 1, Figure 1 in the Frost paper:
-//   https://eprint.iacr.org/2020/852.pdf
+//
+//	https://eprint.iacr.org/2020/852.pdf
 type round1 struct {
 	*round.Helper
 	// taproot indicates whether or not to make taproot compatible keys.
@@ -39,6 +40,7 @@ type round1 struct {
 
 	// privateShare is our previous private share when refreshing, and 0 otherwise.
 	privateShare curve.Scalar
+	a_i0         curve.Scalar
 	// verificationShares should hold the previous verification shares when refreshing, and identity points otherwise.
 	verificationShares map[party.ID]curve.Point
 	// publicKey should be the previous public key when refreshing, and 0 otherwise.
@@ -73,7 +75,12 @@ func (r *round1) Finalize(out chan<- *round.Message) (round.Session, error) {
 	a_i0 := group.NewScalar()
 	a_i0_times_G := group.NewPoint()
 	if !r.refresh {
-		a_i0 = sample.Scalar(rand.Reader, r.Group())
+		if r.a_i0 != nil {
+			a_i0 = group.NewScalar().Set(r.a_i0)
+			r.a_i0 = nil
+		} else {
+			a_i0 = sample.Scalar(rand.Reader, r.Group())
+		}
 		a_i0_times_G = a_i0.ActOnBase()
 	}
 	f_i := polynomial.NewPolynomial(r.Group(), r.threshold, a_i0)

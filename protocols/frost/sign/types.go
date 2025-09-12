@@ -115,7 +115,7 @@ func edwardsPartySign(priv, nonce, challenge curve.Scalar) curve.Scalar {
 
 	kByte := edwards.BigIntToEncodedBytes(new(big.Int).SetBytes(k))
 	dByte := edwards.BigIntToEncodedBytes(new(big.Int).SetBytes(d))
-	copy(hmReduced[:], hm[:])
+	copy(hmReduced[len(hmReduced) - len(hm):], hm[:])
 
 	// dm + k
 	edwards25519.ScMulAdd(&s, &hmReduced, dByte, kByte)
@@ -134,7 +134,7 @@ func edwardsPartySignVerify(R, P curve.Point, challenge, signature curve.Scalar)
 	SB, _ := signature.MarshalBinary()
 
 	copy(PByte[:], PB)
-	copy(CByte[:], CB)
+	copy(CByte[len(CByte)-len(CB):], CB)
 	SByte := edwards.BigIntToEncodedBytes(new(big.Int).SetBytes(SB))
 
 	var A edwards25519.ExtendedGroupElement

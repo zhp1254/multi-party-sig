@@ -91,6 +91,7 @@ func TestSign(t *testing.T) {
 
 func checkOutputTaproot(t *testing.T, rounds []round.Session, public taproot.PublicKey, m []byte) {
 	for _, r := range rounds {
+		//fmt.Println(r.(*round.Abort).Err)
 		require.IsType(t, &round.Output{}, r, "expected result round")
 		resultRound := r.(*round.Output)
 		require.IsType(t, taproot.Signature{}, resultRound.Result, "expected taproot signature result")
@@ -101,7 +102,7 @@ func checkOutputTaproot(t *testing.T, rounds []round.Session, public taproot.Pub
 
 func TestSignTaproot(t *testing.T) {
 	group := curve.Secp256k1{}
-	N := 5
+	N := 3
 	threshold := 2
 
 	partyIDs := test.PartyIDs(N)
@@ -112,7 +113,7 @@ func TestSignTaproot(t *testing.T) {
 		secret.Negate()
 	}
 	f := polynomial.NewPolynomial(group, threshold, secret)
-	publicKey := taproot.PublicKey(publicPoint.(*curve.Secp256k1Point).XBytes())
+	//publicKey := taproot.PublicKey(publicPoint.(*curve.Secp256k1Point).XBytes())
 	steakHash := sha256.New()
 	_, _ = steakHash.Write([]byte{0xDE, 0xAD, 0xBE, 0xEF})
 	steak := steakHash.Sum(nil)
@@ -124,10 +125,50 @@ func TestSignTaproot(t *testing.T) {
 		privateShares[id] = f.Evaluate(id.Scalar(group)).(*curve.Secp256k1Scalar)
 	}
 
-	verificationShares := make(map[party.ID]*curve.Secp256k1Point, N)
-	for _, id := range partyIDs {
+	//verificationShares := make(map[party.ID]*curve.Secp256k1Point, N)
+	/*for _, id := range partyIDs {
 		verificationShares[id] = privateShares[id].ActOnBase().(*curve.Secp256k1Point)
+	}*/
+
+	verification := make(map[party.ID]*curve.Secp256k1Point, N)
+	//Lambdas := polynomial.Lagrange(group, partyIDs)
+
+	kes := map[party.ID]string {
+		partyIDs[0]: "f5ed0aacea7d8be27b72e95d599fd47bffe7749266c19590af13e15906c7d419",
+		partyIDs[1]: "40b8959c0c07a4d6ac8992619d0a0cebb183a728d8e5908e5945a92c05481b4c",
+		partyIDs[2]: "fa67d381e13f580939c7cb929d464f38f79cfd8986c8dd1094df2c0f9b363e07",
 	}
+
+	pub := group.NewPoint().(*curve.Secp256k1Point)
+	s := group.NewScalar().(*curve.Secp256k1Scalar)
+	for id, _ := range privateShares {
+		//s_i := group.NewScalar().Set(Lambdas[id]).Mul(v)
+		fmt.Println(kes[id], id)
+		s_i_b, _ := hex.DecodeString(kes[id])
+		s_i := group.NewScalar()
+		fmt.Println(s_i.UnmarshalBinary(s_i_b), id)
+		privateShares[id] = s_i.(*curve.Secp256k1Scalar)
+		//s_i_G := group.NewScalar().Set(Lambdas[id]).Act(verificationShares[id])
+		s_i_G := s_i.ActOnBase()
+		verification[id] = s_i_G.(*curve.Secp256k1Point)
+
+		pub = (pub.Add(s_i_G)).(*curve.Secp256k1Point)
+		s.Add(privateShares[id])
+	}
+	pub1 := s.ActOnBase().(*curve.Secp256k1Point)
+	fmt.Println(pub.Equal(pub1), " =========<")
+
+	if !pub.HasEvenY() {
+		fmt.Println("!pub.HasEvenY()")
+		for id, v := range privateShares {
+			v.Negate()
+			verification[id] = verification[id].Negate().(*curve.Secp256k1Point)
+		}
+	}
+	//steak, _ = hex.DecodeString("5f78c33274e43fa9de5659265c1d917e25c03722dcb0b8d27db8d5feaa813953")
+
+	tapRootPublicKeyB, _ := pub.MarshalBinary()
+	fmt.Println("tapRootPublicKeyB: ",  hex.EncodeToString(tapRootPublicKeyB))
 
 	var newPublicKey []byte
 	rounds := make([]round.Session, 0, N)
@@ -135,15 +176,19 @@ func TestSignTaproot(t *testing.T) {
 		result := &keygen.TaprootConfig{
 			ID:                 id,
 			Threshold:          threshold,
-			PublicKey:          publicKey,
+			PublicKey:          pub.XBytes(),
 			PrivateShare:       privateShares[id],
-			VerificationShares: verificationShares,
+			VerificationShares: verification,
 		}
-		result, _ = result.DeriveChild(1)
+
+		newPublicKey = result.PublicKey
+		/*result, _ = result.DeriveChild(1)
 		if newPublicKey == nil {
 			newPublicKey = result.PublicKey
-		}
+		}*/
 		tapRootPublicKey, err := curve.Secp256k1{}.LiftX(newPublicKey)
+		//fmt.Println("hex.tapRootPublicKey", hex.EncodeToString(tapRootPublicKeyB))
+		//fmt.Println("hex.tapRootPublicKey", hex.EncodeToString(newPublicKey))
 		genericVerificationShares := make(map[party.ID]curve.Point)
 		for k, v := range result.VerificationShares {
 			genericVerificationShares[k] = v
@@ -209,4 +254,85 @@ func TestSignCheck(t *testing.T)  {
 	kx, ky := c.ScalarBaseMult(k.Bytes())
 	fmt.Println(hex.EncodeToString(edwards.BigIntPointToEncodedBytes(kx, ky)[:]))
 	fmt.Println(R)
+}
+
+func TestTaproot(t *testing.T)  {
+
+ 	PByte, _ := hex.DecodeString("1a6508ccf9310823b24285bddf5d41669e0f2e0ec2b62ca7a95d53e043550734")
+
+ 	K2Byte, _ := hex.DecodeString("f4d837da1ccebe5a82ba458d0ea97c82851592eaac745023cc2b61b79284c573")
+	D2Byte, _ := hex.DecodeString("f5ed0aacea7d8be27b72e95d599fd47bffe7749266c19590af13e15906c7d419")
+
+	K1Byte, _ := hex.DecodeString("eeb95637dc72fbcc0a3da853438fef52d654e4cb68e223a1c36dc8de6e1f3b2b")
+	D1Byte, _ := hex.DecodeString("fa67d381e13f580939c7cb929d464f38f79cfd8986c8dd1094df2c0f9b363e07")
+
+	K3Byte, _ := hex.DecodeString("16fc6744749067c5207c045a5afa2d0363248c92391985f83035ad70e113c18e")
+	D3Byte, _ := hex.DecodeString("40b8959c0c07a4d6ac8992619d0a0cebb183a728d8e5908e5945a92c05481b4c")
+
+	MByte, _ := hex.DecodeString("5f78c33274e43fa9de5659265c1d917e25c03722dcb0b8d27db8d5feaa813953")
+	RxByte, _ := hex.DecodeString("02f2e9d006218f3f07b515384f63e407186b71b6ae854427fd1bce7eb477bcea16")
+
+	d1,d2,d3,k1,k2,k3 := new(curve.Secp256k1Scalar),new(curve.Secp256k1Scalar),new(curve.Secp256k1Scalar),new(curve.Secp256k1Scalar),new(curve.Secp256k1Scalar),new(curve.Secp256k1Scalar)
+	fmt.Println( d1.UnmarshalBinary(D1Byte))
+	fmt.Println(d2.UnmarshalBinary(D2Byte))
+	fmt.Println(d3.UnmarshalBinary(D3Byte))
+
+	fmt.Println(k1.UnmarshalBinary(K1Byte))
+	fmt.Println(k2.UnmarshalBinary(K2Byte))
+	fmt.Println(k3.UnmarshalBinary(K3Byte))
+
+	d,k := new(curve.Secp256k1Scalar),new(curve.Secp256k1Scalar)
+	d.Add(d1)
+	d.Add(d2)
+	d.Add(d3)
+
+	k.Add(k1)
+	k.Add(k2)
+	k.Add(k3)
+
+	R := k.ActOnBase()
+	P := d.ActOnBase()
+	fmt.Println(" private key: ", d)
+	fmt.Println(" K key: ", k)
+
+	if !R.(*curve.Secp256k1Point).HasEvenY() {
+		fmt.Println("R.(*curve.Secp256k1Point).HasEvenY()")
+		k.Negate()
+	}
+	if !P.(*curve.Secp256k1Point).HasEvenY() {
+		fmt.Println("P.(*curve.Secp256k1Point).HasEvenY()")
+		d.Negate()
+	}
+
+	fmt.Println(hex.EncodeToString(R.(*curve.Secp256k1Point).XBytes()), hex.EncodeToString(RxByte))
+	fmt.Println(hex.EncodeToString(P.(*curve.Secp256k1Point).XBytes()), hex.EncodeToString(PByte))
+
+	cHash := taproot.TaggedHash("BIP0340/challenge", R.(*curve.Secp256k1Point).XBytes(),
+		P.(*curve.Secp256k1Point).XBytes(),
+		MByte)
+
+	fmt.Println("cHash: ", hex.EncodeToString(cHash))
+
+	M := R.Curve().NewScalar()
+	fmt.Println(M.UnmarshalBinary(cHash))
+	fmt.Println("M.ActP: ", M.Act(P))
+
+	z := R.Curve().NewScalar().Set(M).Mul(d)
+	fmt.Println("M *D: ",z)
+
+	z.Add(k)
+	sig := taproot.Signature(make([]byte, 0, taproot.SignatureLen))
+	sig = append(sig, R.(*curve.Secp256k1Point).XBytes()...)
+	zBytes, err := z.MarshalBinary()
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println("z.MarshalBinary() ", hex.EncodeToString(zBytes))
+	sig = append(sig, zBytes[:]...)
+
+	taprootPub := taproot.PublicKey(P.(*curve.Secp256k1Point).XBytes())
+	fmt.Println("taprootPub : ", P)
+	fmt.Println(taprootPub.Verify(sig, MByte))
+
 }

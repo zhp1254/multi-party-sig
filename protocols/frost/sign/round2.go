@@ -146,6 +146,7 @@ func (r *round2) Finalize(out chan<- *round.Message) (round.Session, error) {
 		z_i.Add(r.d_i)
 		ed := r.Group().NewScalar().Set(rho[r.SelfID()]).Mul(r.e_i)
 		z_i.Add(ed)
+
 		ed = nil
 	} else {
 		c = getHash(R, r.Y, r.M[:])

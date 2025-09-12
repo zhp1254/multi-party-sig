@@ -55,10 +55,10 @@ func (Secp256k1) LiftX(data []byte) (*Secp256k1Point, error) {
 	out := new(Secp256k1Point)
 	out.value.Z.SetInt(1)
 	if out.value.X.SetByteSlice(data) {
-		return nil, fmt.Errorf("secp256k1Point.UnmarshalBinary: x coordinate out of range")
+		return nil, fmt.Errorf("LiftX secp256k1Point.UnmarshalBinary: x coordinate out of range")
 	}
 	if !secp256k1.DecompressY(&out.value.X, false, &out.value.Y) {
-		return nil, fmt.Errorf("secp256k1Point.UnmarshalBinary: x coordinate not on curve")
+		return nil, fmt.Errorf("LiftX1 secp256k1Point.UnmarshalBinary: x coordinate not on curve")
 	}
 	return out, nil
 }
@@ -175,6 +175,11 @@ func (s *Secp256k1Scalar) ActOnBase() Point {
 	return out
 }
 
+func (s *Secp256k1Scalar) String() string {
+	data, _ := s.MarshalBinary()
+	return hex.EncodeToString(data)
+}
+
 type Secp256k1Point struct {
 	value secp256k1.JacobianPoint
 }
@@ -185,6 +190,11 @@ func secp256k1CastPoint(generic Point) *Secp256k1Point {
 		panic(fmt.Sprintf("failed to convert to secp256k1Point: %v", generic))
 	}
 	return out
+}
+
+func (s *Secp256k1Point) String() string {
+	data, _ := s.MarshalBinary()
+	return hex.EncodeToString(data)
 }
 
 func (*Secp256k1Point) Curve() Curve {

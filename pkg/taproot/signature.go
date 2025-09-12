@@ -174,29 +174,40 @@ func (sk SecretKey) Sign(rand io.Reader, m []byte) (Signature, error) {
 func (pk PublicKey) Verify(sig Signature, m []byte) bool {
 	// See: https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#verification
 	if len(sig) != SignatureLen {
+		fmt.Println("Verify taproot SignatureLen err")
 		return false
 	}
 
 	P, err := curve.Secp256k1{}.LiftX(pk)
+	//fmt.Println("curve.Secp256k1{}.LiftX(pk): ", P)
 	if err != nil {
 		return false
 	}
 	s := new(curve.Secp256k1Scalar)
 	if err := s.UnmarshalBinary(sig[32:]); err != nil {
+		fmt.Println("Verify taproot Signature UnmarshalBinary err", err)
 		return false
 	}
 	eHash := TaggedHash("BIP0340/challenge", sig[:32], pk, m)
 	e := new(curve.Secp256k1Scalar)
 	_ = e.UnmarshalBinary(eHash)
 
+	//fmt.Println("eHash:", hex.EncodeToString(eHash))
 	R := s.ActOnBase()
+	//fmt.Println("s.ActOnBase(): ", R)
+	//fmt.Println("e.Act(P): ", e.Act(P))
+
 	check2 := R.Sub(e.Act(P))
 	check := check2.(*curve.Secp256k1Point)
 	if check.IsIdentity() {
+		fmt.Println("Verify taproot Signature check.IsIdentity err")
 		return false
 	}
 	if !check.HasEvenY() {
+		fmt.Println("Verify taproot Signature check.HasEvenY err")
 		return false
 	}
+
+	//fmt.Println("check.XBytes(): ", hex.EncodeToString(check.XBytes()), hex.EncodeToString(sig[:32]))
 	return bytes.Equal(check.XBytes(), sig[:32])
 }

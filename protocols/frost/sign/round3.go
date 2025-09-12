@@ -116,7 +116,7 @@ func (r *round3) Finalize(chan<- *round.Message) (round.Session, error) {
 		taprootPub := taproot.PublicKey(r.Y.(*curve.Secp256k1Point).XBytes())
 
 		if !taprootPub.Verify(sig, r.M) {
-			return r.AbortRound(fmt.Errorf("generated signature failed to verify")), nil
+			return r.AbortRound(fmt.Errorf("generated taproot signature failed to verify")), nil
 		}
 
 		return r.ResultRound(sig), nil

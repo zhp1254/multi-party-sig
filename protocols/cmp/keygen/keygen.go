@@ -49,9 +49,18 @@ func Start(info round.Info, pl *pool.Pool, c *config.Config, priv *big.Int) prot
 		VSSConstant := sample.Scalar(rand.Reader, group)
 		if priv != nil {
 			//n := new(saferith.Nat).SetBig(priv, priv.BitLen())
+			sByte := priv.Bytes()
+			if len(sByte) < 32 {
+				newByte := make([]byte, 32-len(sByte))
+				newByte = append(newByte, sByte...)
+				sByte = newByte
+			}
 			VSSConstant = group.NewScalar()
-			err = VSSConstant.UnmarshalBinary(priv.Bytes())
-			fmt.Println("VSSConstant.UnmarshalBinary err: ", err)
+			err = VSSConstant.UnmarshalBinary(sByte)
+			//fmt.Println("VSSConstant.UnmarshalBinary err: ", err)
+			if err != nil {
+				return nil, err
+			}
 		}
 		VSSSecret := polynomial.NewPolynomial(group, helper.Threshold(), VSSConstant)
 		return &round1{

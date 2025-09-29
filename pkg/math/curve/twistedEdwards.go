@@ -94,7 +94,15 @@ func (s *TwistedEdwardsScalar) MarshalBinary() ([]byte, error) {
 	}
 	/*data := edwards.BigIntToEncodedBytes(s.value)
 	return data[:], nil*/
-	return s.value.Bytes(), nil
+	b := s.value.Bytes()
+	diffLen := edwardsCurve.BitSize/8 - len(b)
+	if diffLen > 0 {
+		cb := make([]byte, diffLen)
+		cb = append(cb, b...)
+		return cb[:], nil
+	} else {
+		return b, nil
+	}
 }
 
 func (s *TwistedEdwardsScalar) UnmarshalBinary(data []byte) error {
